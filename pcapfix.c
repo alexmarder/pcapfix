@@ -44,23 +44,24 @@
 #include "pcap.h"
 #include "pcap_kuznet.h"
 #include "pcapng.h"
+#include "cfile.h"
 
-#define VERSION "1.1.4"			    /* pcapfix version */
+#define VERSION "1.1.4"                /* pcapfix version */
 
 #define BTSNOOP_MAGIC 0x6E737462    /* btsnoop file magic (first 4 bytes) */
-#define SNOOP_MAGIC 0x6f6f6e73	    /* snoop file magic (first 4 bytes) */
+#define SNOOP_MAGIC 0x6f6f6e73        /* snoop file magic (first 4 bytes) */
 #define NETMON_MAGIC 0x55424d47     /* netmon file magic */
 #define NETMON11_MAGIC 0x53535452   /* netmon 1.1 file magic */
 #define ETHERPEEK_MAGIC 0x7265767f  /* EtherPeek/AiroPeek/OmniPeek file magic */
 
 /* configuration variables */
-int deep_scan = 0;		/* deep scan option (default: no deep scan) */
-int soft_mode = 0;		/* soft mode option (default: no soft mode) */
-int keep_outfile = 0;		/* keep output file even if nothing needed fixing (default: don't) */
-int verbose = 0;		/* verbose output option (default: dont be verbose) */
-int swapped = 0;		/* pcap file is swapped (big endian) */
-int data_link_type = -1;	/* data link type (default: LINKTYPE_ETHERNET) */
-int pcapng = 0;			/* file format to assume */
+int deep_scan = 0;        /* deep scan option (default: no deep scan) */
+int soft_mode = 0;        /* soft mode option (default: no soft mode) */
+int keep_outfile = 0;        /* keep output file even if nothing needed fixing (default: don't) */
+int verbose = 0;        /* verbose output option (default: dont be verbose) */
+int swapped = 0;        /* pcap file is swapped (big endian) */
+int data_link_type = -1;    /* data link type (default: LINKTYPE_ETHERNET) */
+int pcapng = 0;            /* file format to assume */
 
 /* header placeholder */
 unsigned int header_magic;
@@ -75,16 +76,16 @@ unsigned int header_magic;
  *
  */
 void usage(char *progname) {
-  printf("Usage: %s [OPTIONS] filename\n", progname);
-  printf("OPTIONS:");
-  printf(  "\t-d        , --deep-scan          \tDeep scan (pcap only)\n");
-  printf("\t\t-s        , --soft-mode          \tSoft mode (packet detection)\n");
-  printf("\t\t-n        , --pcapng             \tforce pcapng format\n");
-  printf("\t\t-o <file> , --outfile <file>     \tset output file name\n");
-  printf("\t\t-k        , --keep-outfile       \tdon't delete the output file if nothing needed to be fixed\n");
-  printf("\t\t-t <nr>   , --data-link-type <nr>\tData link type\n");
-  printf("\t\t-v        , --verbose            \tVerbose output\n");
-  printf("\n");
+    fprintf(stderr, "Usage: %s [OPTIONS] filename\n", progname);
+    fprintf(stderr, "OPTIONS:");
+    fprintf(stderr, "\t-d        , --deep-scan          \tDeep scan (pcap only)\n");
+    fprintf(stderr, "\t\t-s        , --soft-mode          \tSoft mode (packet detection)\n");
+    fprintf(stderr, "\t\t-n        , --pcapng             \tforce pcapng format\n");
+    fprintf(stderr, "\t\t-o <file> , --outfile <file>     \tset output file name\n");
+    fprintf(stderr, "\t\t-k        , --keep-outfile       \tdon't delete the output file if nothing needed to be fixed\n");
+    fprintf(stderr, "\t\t-t <nr>   , --data-link-type <nr>\tData link type\n");
+    fprintf(stderr, "\t\t-v        , --verbose            \tVerbose output\n");
+    fprintf(stderr, "\n");
 }
 
 /*
@@ -101,8 +102,8 @@ void usage(char *progname) {
  *
  */
 unsigned short conshort(unsigned short var) {
-  if (swapped == 0) return(var);
-  return(htons(var));
+    if (swapped == 0) return (var);
+    return (htons(var));
 }
 
 /*
@@ -119,8 +120,8 @@ unsigned short conshort(unsigned short var) {
  *
  */
 unsigned int conint(unsigned int var) {
-  if (swapped == 0) return(var);
-  return(htonl(var));
+    if (swapped == 0) return (var);
+    return (htonl(var));
 }
 
 /*
@@ -133,13 +134,13 @@ unsigned int conint(unsigned int var) {
  *
  */
 void print_progress(uint64_t pos, uint64_t filesize) {
-  float percentage;	/* pencentage variable */
+    float percentage;    /* pencentage variable */
 
-  /* calculate the current percentage of file analyzing progress */
-  percentage = (float)pos/(float)filesize;
+    /* calculate the current percentage of file analyzing progress */
+    percentage = (float) pos / (float) filesize;
 
-  /* print the first part of the line including percentage output */
-  printf("[*] Progress: %6.02f %%\n", percentage*100);
+    /* print the first part of the line including percentage output */
+    fprintf(stderr, "[*] Progress: %6.02f %%\n", percentage * 100);
 }
 
 /*
@@ -169,332 +170,343 @@ void print_progress(uint64_t pos, uint64_t filesize) {
  *
  */
 int main(int argc, char *argv[]) {
-  FILE *pcap, *pcap_fix;		/* input and output file */
-  int option_index = 0;			/* getopt_long option index */
-  int c;                        /* getopts loop counter */
-  int res;                      /* return values */
-  char *filename;               /* filename of input file */
-  char *filebname;              /* filebasename of input file (without path) */
-  char *filename_fix = NULL;    /* filename of output file */
-  uint64_t bytes;		        /* read/written blocks counter */
-  uint64_t filesize;	        /* file size of input pcap file in bytes */
+    cfile_t *pcap;
+    afile_t *pcap_fix;        /* input and output file */
+    int option_index = 0;            /* getopt_long option index */
+    int c;                        /* getopts loop counter */
+    int res;                      /* return values */
+    char *filename;               /* filename of input file */
+    char *filebname;              /* filebasename of input file (without path) */
+    char *filename_fix = NULL;    /* filename of output file */
+    uint64_t bytes;                /* read/written blocks counter */
+//  uint64_t filesize;	        /* file size of input pcap file in bytes */
 
-  /* init getopt_long options struct */
-  struct option long_options[] = {
-    {"deep-scan", no_argument, 0, 'd'},            /* --deep-scan == -d */
-    {"soft-mode", no_argument, 0, 's'},            /* --soft-mode == -s */
-    {"pcapng", no_argument, 0, 'n'},               /* --pcapng == -n */
-    {"outfile", required_argument, 0, 'o'},        /* --outfile == -o */
-    {"keep-outfile", no_argument, 0, 'k'},         /* --keep-outfile == -k */
-    {"data-link-type", required_argument, 0, 't'}, /* --data-link-type == -t */
-    {"verbose", no_argument, 0, 'v'},              /* --verbose == -v */
-    {0, 0, 0, 0}
-  };
+    /* init getopt_long options struct */
+    struct option long_options[] = {
+            {"deep-scan",      no_argument,       0, 'd'},            /* --deep-scan == -d */
+            {"soft-mode",      no_argument,       0, 's'},            /* --soft-mode == -s */
+            {"pcapng",         no_argument,       0, 'n'},               /* --pcapng == -n */
+            {"outfile",        required_argument, 0, 'o'},        /* --outfile == -o */
+            {"keep-outfile",   no_argument,       0, 'k'},         /* --keep-outfile == -k */
+            {"data-link-type", required_argument, 0, 't'}, /* --data-link-type == -t */
+            {"verbose",        no_argument,       0, 'v'},              /* --verbose == -v */
+            {0, 0,                                0, 0}
+    };
 
-  /* print out pcapfix header information */
-  printf("pcapfix %s (c) 2012-2019 Robert Krause\n\n", VERSION);
-
-  /* scan for options and arguments */
-  while ((c = getopt_long(argc, argv, ":t:ko:v::d::s::n::", long_options, &option_index)) != -1) {
-    switch (c) {
-      case 0:	/* getopt_long options evaluation */
-        break;
-      case 'd':	/* deep scan */
-        deep_scan++;
-        break;
-      case 's':	/* soft mode */
-        soft_mode++;
-        break;
-      case 'k': /* keep outfile even if nothing needed fixing */
-        keep_outfile++;
-        break;
-      case 'n':	/* pcapng format */
-        pcapng++;
-        break;
-      case 'o':	/* output file name */
-        filename_fix = malloc(strlen(optarg)+1);
-	strcpy(filename_fix, optarg);
-        break;
-      case 't':	/* data link type */
-        data_link_type = atoi(optarg);
-        break;
-      case 'v':	/* verbose */
-        verbose++;
-        break;
-      case '?': /* unknown option */
-        usage(argv[0]);
-        return -1;
-      default:
-        abort();
+    /* scan for options and arguments */
+    while ((c = getopt_long(argc, argv, ":t:ko:v::d::s::n::", long_options, &option_index)) != -1) {
+        switch (c) {
+            case 0:    /* getopt_long options evaluation */
+                break;
+            case 'd':    /* deep scan */
+                deep_scan++;
+                break;
+            case 's':    /* soft mode */
+                soft_mode++;
+                break;
+            case 'k': /* keep outfile even if nothing needed fixing */
+                keep_outfile++;
+                break;
+            case 'n':    /* pcapng format */
+                pcapng++;
+                break;
+            case 'o':    /* output file name */
+                filename_fix = malloc(strlen(optarg) + 1);
+                strcpy(filename_fix, optarg);
+                break;
+            case 't':    /* data link type */
+                data_link_type = atoi(optarg);
+                break;
+            case 'v':    /* verbose */
+                verbose++;
+                break;
+            case '?': /* unknown option */
+                usage(argv[0]);
+                return -1;
+            default:
+                abort();
+        }
     }
-  }
 
-  /* filename is first argument */
-  filename = argv[optind++];
+    /* print out pcapfix header information */
+    if (verbose >= VERBOSE) fprintf(stderr, "pcapfix %s (c) 2012-2019 Robert Krause\n\n", VERSION);
 
-  /* if filename is not set, output usage information */
-  if (filename == NULL) {
-    usage(argv[0]);
-    return(-1);
-  }
+    /* filename is first argument */
+    filename = argv[optind++];
 
-  /* open input file */
-  printf("[*] Reading from file: %s\n", filename);
-  pcap = fopen(filename, "rb");
-  if (!pcap) {
-    perror("[-] Cannot open input file");
-    return(-2);
-  }
+    /* if filename is not set, output usage information */
+    if (filename == NULL) {
+        usage(argv[0]);
+        return (-1);
+    }
 
-  /* check for preassigned fixed file name */
-  if (filename_fix == NULL) {
+    /* open input file */
+    if (verbose >= VERBOSE) fprintf(stderr, "[*] Reading from file: %s\n", filename);
+    pcap = cfile_open(filename, "rb");
+    if (!pcap) {
+        if (verbose >= VERBOSE) perror("[-] Cannot open input file");
+        return (-2);
+    }
 
-    /* open output file */
-    /* we need to extract the basename first (windows and linux use different functions) */
-    filebname = malloc(strlen(filename)+1);
-    #ifdef __WIN32__
-      char *fileext = malloc(strlen(filename));   /* file extention to be used in output file as well */
-      _splitpath(filename, NULL, NULL, filebname, fileext);	/* windown method (_splitpath) */
-      strcat(filebname, fileext);
-      free(fileext);
-    # else
-      strcpy(filebname, basename(filename));		/* unix method (basename) */
-    #endif
-    filename_fix = malloc(strlen(filebname)+7);	/* size of outputfile depends on inputfile's length */
+    /* check for preassigned fixed file name */
+    if (filename_fix == NULL) {
 
-    /* prepare output file name: "fixed_" + inputfilename */
-    strcpy(filename_fix, "fixed_");
-    strcat(filename_fix, filebname);
-    free(filebname);
-  }
+        /* open output file */
+        /* we need to extract the basename first (windows and linux use different functions) */
+        filebname = malloc(strlen(filename) + 1);
+#ifdef __WIN32__
+        char *fileext = malloc(strlen(filename));   /* file extention to be used in output file as well */
+        _splitpath(filename, NULL, NULL, filebname, fileext);	/* windown method (_splitpath) */
+        strcat(filebname, fileext);
+        free(fileext);
+# else
+        strcpy(filebname, basename(filename));        /* unix method (basename) */
+#endif
+        filename_fix = malloc(strlen(filebname) + 7);    /* size of outputfile depends on inputfile's length */
 
-  /* open the file for writing */
+        /* prepare output file name: "fixed_" + inputfilename */
+        strcpy(filename_fix, "fixed_");
+        strcat(filename_fix, filebname);
+        free(filebname);
+    }
 
-  // is output == inputfile ?? if yes, then open for read / append
-  // if no, then open for writing only
-  if (strcmp(filename, filename_fix) == 0) pcap_fix = fopen(filename_fix, "rb+");
-  else pcap_fix = fopen(filename_fix, "w+");
+    /* open the file for writing */
 
-  if (!pcap_fix) {
-    perror("[-] Cannot open output file for writing");
-    return(-3);
-  }
-  printf("[*] Writing to file: %s\n", filename_fix);
+    // is output == inputfile ?? if yes, then open for read / append
+    // if no, then open for writing only
+//    if (strcmp(filename, filename_fix) == 0) pcap_fix = afile_open(filename_fix, "rb+");
+//    else pcap_fix = afile_open(filename_fix, "w+");
 
-  /* basic checks of input file */
+    pcap_fix = afile_open(filename_fix, "w+");
+    if (!pcap_fix) {
+        perror("[-] Cannot open output file for writing");
+        return (-3);
+    }
+    if (verbose >= VERBOSE) fprintf(stderr, "[*] Writing to file: %s\n", filename_fix);
 
-  /* get file size */
-  fseeko(pcap, 0, SEEK_END);
-  filesize = ftello(pcap);
-  printf("[*] File size: %" PRIu64 " bytes.\n", filesize);
+    /* basic checks of input file */
 
-  /* check for empty file */
-  if (filesize == 0) {
-    printf("[-] The source file is empty.\n\n");
-    fclose(pcap);
-    fclose(pcap_fix);
-    if (strcmp(filename, filename_fix) != 0) remove(filename_fix);
-    return(-4);
-  }
+    /* get file size */
+//  fseeko(pcap, 0, SEEK_END);
+//  filesize = ftello(pcap);
+//  fprintf(stderr, "[*] File size: %" PRIu64 " bytes.\n", filesize);
 
-  /* reset file pointer to file begin */
-  fseeko(pcap, 0, SEEK_SET);
+    /* check for empty file */
+//  if (filesize == 0) {
+//    fprintf(stderr, "[-] The source file is empty.\n\n");
+//    fclose(pcap);
+//    fclose(pcap_fix);
+//    if (strcmp(filename, filename_fix) != 0) remove(filename_fix);
+//    return(-4);
+//  }
 
-  /* read header to header magic for further inspection */
-  bytes = fread(&header_magic, sizeof(header_magic), 1, pcap);
-  if (bytes == 0) {
-    printf("[-] Cannot read file header (file too small?).\n\n");
-    fclose(pcap);
-    fclose(pcap_fix);
-    if (strcmp(filename, filename_fix) != 0) remove(filename_fix);
-    return(-5);
-  }
-  fseeko(pcap, 0, SEEK_SET);
+    /* reset file pointer to file begin */
+    cfile_seeko(pcap, 0, SEEK_SET);
 
-  /* check for file type */
-  switch (header_magic) {
+    /* read header to header magic for further inspection */
+    bytes = cfile_read(&header_magic, sizeof(header_magic), 1, pcap);
+    if (bytes == 0) {
+        if (verbose >= VERBOSE) fprintf(stderr, "[-] Cannot read file header (file too small?).\n\n");
+        cfile_close(pcap);
+        afile_close(pcap_fix);
+        if (strcmp(filename, filename_fix) != 0) remove(filename_fix);
+        return (-5);
+    }
+    cfile_seeko(pcap, 0, SEEK_SET);
 
-    /* etherpeek file format --> often used with pcapfix but NOT supported (yet) */
-    case ETHERPEEK_MAGIC:
-      printf("[-] This is a EtherPeek/AiroPeek/OmniPeek file, which is not supported.\n\n");
+    /* check for file type */
+    switch (header_magic) {
 
-      /* close input and output files */
-      fclose(pcap);
-      fclose(pcap_fix);
+        /* etherpeek file format --> often used with pcapfix but NOT supported (yet) */
+        case ETHERPEEK_MAGIC:
+            if (verbose >= VERBOSE) fprintf(stderr, "[-] This is a EtherPeek/AiroPeek/OmniPeek file, which is not supported.\n\n");
 
-      /* delete output file due to no changes failure */
-      if (strcmp(filename, filename_fix) != 0) remove(filename_fix);
+            /* close input and output files */
+            cfile_close(pcap);
+            afile_close(pcap_fix);
 
-      return(-6);
+            /* delete output file due to no changes failure */
+            if (strcmp(filename, filename_fix) != 0) remove(filename_fix);
 
-    /* netmon file format --> often used with pcapfix but NOT supported (yet) */
-    case NETMON_MAGIC:
-    case NETMON11_MAGIC:
-      printf("[-] This is a NetMon file, which is not supported.\n\n");
+            return (-6);
 
-      /* close input and output files */
-      fclose(pcap);
-      fclose(pcap_fix);
+            /* netmon file format --> often used with pcapfix but NOT supported (yet) */
+        case NETMON_MAGIC:
+        case NETMON11_MAGIC:
+            if (verbose >= VERBOSE) fprintf(stderr, "[-] This is a NetMon file, which is not supported.\n\n");
 
-      /* delete output file due to no changes failure */
-      if (strcmp(filename, filename_fix) != 0) remove(filename_fix);
+            /* close input and output files */
+            cfile_close(pcap);
+            afile_close(pcap_fix);
 
-      return(-6);
+            /* delete output file due to no changes failure */
+            if (strcmp(filename, filename_fix) != 0) remove(filename_fix);
 
-    /* SNOOP file format --> often used with pcapfix but NOT supported (yet) */
-    case SNOOP_MAGIC:
-      printf("[-] This is a SNOOP file, which is not supported.\n\n");
+            return (-6);
 
-      /* close input and output files */
-      fclose(pcap);
-      fclose(pcap_fix);
+            /* SNOOP file format --> often used with pcapfix but NOT supported (yet) */
+        case SNOOP_MAGIC:
+            if (verbose >= VERBOSE) fprintf(stderr, "[-] This is a SNOOP file, which is not supported.\n\n");
 
-      /* delete output file due to no changes failure */
-      if (strcmp(filename, filename_fix) != 0) remove(filename_fix);
+            /* close input and output files */
+            cfile_close(pcap);
+            afile_close(pcap_fix);
 
-      return(-6);
+            /* delete output file due to no changes failure */
+            if (strcmp(filename, filename_fix) != 0) remove(filename_fix);
 
-    case BTSNOOP_MAGIC:
-      printf("[-] This is a BTSNOOP file, which is not supported.\n\n");
+            return (-6);
 
-      /* close input and output files */
-      fclose(pcap);
-      fclose(pcap_fix);
+        case BTSNOOP_MAGIC:
+            if (verbose >= VERBOSE) fprintf(stderr, "[-] This is a BTSNOOP file, which is not supported.\n\n");
 
-      /* delete output file due to no changes failure */
-      if (strcmp(filename, filename_fix) != 0) remove(filename_fix);
+            /* close input and output files */
+            cfile_close(pcap);
+            afile_close(pcap_fix);
 
-      return(-6);
+            /* delete output file due to no changes failure */
+            if (strcmp(filename, filename_fix) != 0) remove(filename_fix);
 
-    /* extended pcap format (KUZNETZOV) */
-    case PCAP_EXT_MAGIC:
-    case PCAP_EXT_MAGIC_SWAPPED:
-      printf("[+] This is an extended tcpdump file.\n");
-      res = fix_pcap_kuznetzov(pcap, pcap_fix);
+            return (-6);
 
-      break;
+            /* extended pcap format (KUZNETZOV) */
+        case PCAP_EXT_MAGIC:
+        case PCAP_EXT_MAGIC_SWAPPED:
+            if (verbose >= VERBOSE) fprintf(stderr, "[+] This is an extended tcpdump file.\n");
+            res = fix_pcap_kuznetzov(pcap, pcap_fix);
 
-    /* PCAPNG format */
-    case PCAPNG_MAGIC:
-      printf("[+] This is a PCAPNG file.\n");
-      res = fix_pcapng(pcap, pcap_fix);
-      break;
+            break;
 
-    /* classic PCAP format */
-    case PCAP_MAGIC:
-    case PCAP_MAGIC_SWAPPED:
-      printf("[+] This is a PCAP file.\n");
-      if (pcapng > 0) {
-        printf("[!] Your wish is my command! I will handle it as PCAPNG nevertheless.\n");
-        res = fix_pcapng(pcap, pcap_fix);
-      } else {
-        res = fix_pcap(pcap, pcap_fix);
-      }
-      break;
+            /* PCAPNG format */
+        case PCAPNG_MAGIC:
+            if (verbose >= VERBOSE) fprintf(stderr, "[+] This is a PCAPNG file.\n");
+            res = 0;
+//            res = fix_pcapng(pcap, pcap_fix);
+            break;
 
-    /* if the file type is unknown (maybe header corrupted) assume classic PCAP format */
-    default:
-      if (pcapng > 0) {
-        printf("[*] Unknown file type. Assuming PCAPNG format.\n");
-        res = fix_pcapng(pcap, pcap_fix);
-      } else {
-        printf("[*] Unknown file type. Assuming PCAP format.\n");
-        res = fix_pcap(pcap, pcap_fix);
-      }
-      break;
-  }
+            /* classic PCAP format */
+        case PCAP_MAGIC:
+        case PCAP_MAGIC_SWAPPED:
+            if (verbose >= VERBOSE) fprintf(stderr, "[+] This is a PCAP file.\n");
+            if (0 || pcapng > 0) {
+                if (verbose >= VERBOSE) fprintf(stderr, "[!] Your wish is my command! I will handle it as PCAPNG nevertheless.\n");
+//        res = fix_pcapng(pcap, pcap_fix);
+                res = 0;
+            } else {
+                res = fix_pcap(pcap, pcap_fix);
+            }
+            break;
 
-  /* evaluate result of fixing function */
-  switch (res) {
+            /* if the file type is unknown (maybe header corrupted) assume classic PCAP format */
+        default:
+            if (0 || pcapng > 0) {
+                if (verbose >= VERBOSE) fprintf(stderr, "[*] Unknown file type. Assuming PCAPNG format.\n");
+                res = 0;
+//        res = fix_pcapng(pcap, pcap_fix);
+            } else {
+                if (verbose >= VERBOSE) fprintf(stderr, "[*] Unknown file type. Assuming PCAP format.\n");
+                res = fix_pcap(pcap, pcap_fix);
+            }
+            break;
+    }
 
-    /* no corruption found; all fields were valid */
-    case 0:
-      printf("[*] Your pcap file looks proper. Nothing to fix!\n\n");
+    /* evaluate result of fixing function */
+    switch (res) {
 
-      /* close input and output files */
-      fclose(pcap);
-      fclose(pcap_fix);
+        /* no corruption found; all fields were valid */
+        case 0:
+            if (verbose >= VERBOSE) fprintf(stderr, "[*] Your pcap file looks proper. Nothing to fix!\n\n");
 
-      /* delete output file due to no changes failure */
-      if ((strcmp(filename, filename_fix) != 0) && (0 == keep_outfile)) {
-        remove(filename_fix);
-      }
+            /* close input and output files */
+            cfile_close(pcap);
+            afile_close(pcap_fix);
 
-      return(0);
+            /* delete output file due to no changes failure */
+            if ((strcmp(filename, filename_fix) != 0) && (0 == keep_outfile)) {
+                remove(filename_fix);
+            }
 
-    /* there is NO indication that this has ever been a pcap file at all */
-    case -1:
-      printf("[-] FAILED: This file does not seem to be a pcap/pcapng file!\n\n");
+            return (0);
 
-      /* close input and output files */
-      fclose(pcap);
-      fclose(pcap_fix);
+            /* there is NO indication that this has ever been a pcap file at all */
+        case -1:
+            if (verbose >= VERBOSE) fprintf(stderr, "[-] FAILED: This file does not seem to be a pcap/pcapng file!\n\n");
 
-      /* delete output file due to failure */
-      if (strcmp(filename, filename_fix) != 0) remove(filename_fix);
+            /* close input and output files */
+            cfile_close(pcap);
+            afile_close(pcap_fix);
 
-      /* deep scan / soft mode dependent output */
-      if (deep_scan == 0 || soft_mode == 0) printf("If you are SURE that there are pcap packets inside, try with deep scan (-d) (pcap only!) and/or soft mode (-s) to find them!\n\n");
-      else printf("There is REALLY no pcap packet inside this file!!!\n\n");
+            /* delete output file due to failure */
+            if (strcmp(filename, filename_fix) != 0) remove(filename_fix);
 
-      return(res-10);
+            /* deep scan / soft mode dependent output */
+            if (deep_scan == 0 || soft_mode == 0) {
+                if (verbose >= VERBOSE)
+                    fprintf(stderr,
+                            "If you are SURE that there are pcap packets inside, try with deep scan (-d) (pcap only!) and/or soft mode (-s) to find them!\n\n");
+            }
+            else {
+                if (verbose >= VERBOSE) fprintf(stderr, "There is REALLY no pcap packet inside this file!!!\n\n");
+            }
 
-    /* it seems to be a pcap file, but pcapfix can NOT repair it (yet) */
-    case -2:
-      printf("[-] FAILED: Unable to recover pcap file.\n\n");
+            return (res - 10);
 
-      /* some hints for verbose mode and pcapfix improvement support */
-      if (!verbose) printf("Try executing pcapfix with -v option to trace the corruption!\n");
-      printf("You may help to improve pcapfix by sending your pcap file to ruport@f00l.de\n\n");
+            /* it seems to be a pcap file, but pcapfix can NOT repair it (yet) */
+        case -2:
+            if (verbose >= VERBOSE) fprintf(stderr, "[-] FAILED: Unable to recover pcap file.\n\n");
 
-      /* close input and output files */
-      fclose(pcap);
-      fclose(pcap_fix);
+            /* some hints for verbose mode and pcapfix improvement support */
+            if (verbose > VERBOSE) fprintf(stderr, "Try executing pcapfix with -v option to trace the corruption!\n");
+            if (verbose >= VERBOSE) fprintf(stderr, "You may help to improve pcapfix by sending your pcap file to ruport@f00l.de\n\n");
 
-      /* delete output file due to failure */
-      if (strcmp(filename, filename_fix) != 0) remove(filename_fix);
+            /* close input and output files */
+            cfile_close(pcap);
+            afile_close(pcap_fix);
 
-      return(res-10);
+            /* delete output file due to failure */
+            if (strcmp(filename, filename_fix) != 0) remove(filename_fix);
 
-    /* fread did not succeed; might be caused by early EOF; but it should NOT happen at all */
-    case -3:
-      printf("[-] FAILED: EOF while reading input file.\n\n");
+            return (res - 10);
 
-      /* some hints for verbose mode and pcapfix improvement support */
-      if (!verbose) printf("Try executing pcapfix with -v option to trace the corruption!\n");
-      printf("You may help to improve pcapfix by sending your pcap file to ruport@f00l.de\n\n");
+            /* fread did not succeed; might be caused by early EOF; but it should NOT happen at all */
+        case -3:
+            if (verbose >= VERBOSE) fprintf(stderr, "[-] FAILED: EOF while reading input file.\n\n");
 
-      /* close input and output files */
-      fclose(pcap);
-      fclose(pcap_fix);
+            /* some hints for verbose mode and pcapfix improvement support */
+            if (verbose > VERBOSE) fprintf(stderr, "Try executing pcapfix with -v option to trace the corruption!\n");
+            if (verbose >= VERBOSE) fprintf(stderr, "You may help to improve pcapfix by sending your pcap file to ruport@f00l.de\n\n");
 
-      /* delete output file due to failure */
-      if (strcmp(filename, filename_fix) != 0) remove(filename_fix);
+            /* close input and output files */
+            cfile_close(pcap);
+            afile_close(pcap_fix);
 
-      return(res-10);
-  }
+            /* delete output file due to failure */
+            if (strcmp(filename, filename_fix) != 0) remove(filename_fix);
 
-  /* file has been progressed properly. what is the result (number of corruptions)? */
+            return (res - 10);
+    }
 
-  if (res > 0) {
-    /* Successful repaired! (res > 0) */
+    /* file has been progressed properly. what is the result (number of corruptions)? */
 
-    fclose(pcap);
-    off_t finalpos = ftello(pcap_fix);
-    fclose(pcap_fix);
-    int success = truncate(filename_fix, finalpos);
-    if (success != 0) printf("[-] Truncating result file failed!");
+    if (res > 0) {
+        /* Successful repaired! (res > 0) */
 
-    printf("[+] SUCCESS: %d Corruption(s) fixed!\n\n", res);
-    return(0);
+        cfile_close(pcap);
+//        off_t finalpos = ftello(pcap_fix);
+        afile_close(pcap_fix);
+//        int success = truncate(filename_fix, finalpos);
+//        if (success != 0) fprintf(stderr, "[-] Truncating result file failed!");
 
-  } else {
-    /* Unknown Error (res < 0); this should NEVER happen! */
+        if (verbose >= VERBOSE) fprintf(stderr, "[+] SUCCESS: %d Corruption(s) fixed!\n\n", res);
+        return (0);
 
-    printf("[-] UNKNOWN ERROR (%d)\n\n", res);
-    printf("Please report this bug to ruport@f00l.de (including -v -v output).\n\n");
-    return(-255);
+    } else {
+        /* Unknown Error (res < 0); this should NEVER happen! */
 
-  }
+        if (verbose >= VERBOSE) fprintf(stderr, "[-] UNKNOWN ERROR (%d)\n\n", res);
+        if (verbose >= VERBOSE) fprintf(stderr, "Please report this bug to ruport@f00l.de (including -v -v output).\n\n");
+        return (-255);
+
+    }
 
 }

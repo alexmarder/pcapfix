@@ -21,6 +21,9 @@
 #define PF_PCAPFIX
 
 #define _FILE_OFFSET_BITS 64
+#define VERBOSE 1
+#define VVERBOSE 2
+#define VVVERBOSE 3
 
 #include <stdio.h>
 #include <string.h>

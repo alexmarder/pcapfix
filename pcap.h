@@ -19,12 +19,14 @@
 
 #ifndef PF_PCAP
 #define PF_PCAP
+#include "cfile.h"
 
-#define PCAP_MAGIC 0xa1b2c3d4			/* the magic of the pcap global header (non swapped) */
+#define PCAP_MAGIC 0xa1b2c3d4			    /* the magic of the pcap global header (non swapped) */
 #define PCAP_MAGIC_SWAPPED 0xd4c3b2a1		/* the magic of the pcap global header (non swapped) */
-#define PCAPNG_MAGIC 0x0a0d0d0a			/* the magic of the pcap global header (non swapped) */
-#define PCAP_NSEC_MAGIC 0xa1b23c4d		/* the magic of the pcap global header (nanoseconds - non swapped) */
-#define PCAP_MAX_SNAPLEN 262144			/* the maximum snap length, should be 256K instead of 64K nowadays */
+#define PCAPNG_MAGIC 0x0a0d0d0a		    	/* the magic of the pcap global header (non swapped) */
+#define PCAP_NSEC_MAGIC 0xa1b23c4d  		/* the magic of the pcap global header (nanoseconds - non swapped) */
+//#define PCAP_MAX_SNAPLEN 262144			/* the maximum snap length, should be 256K instead of 64K nowadays */
+#define PCAP_MAX_SNAPLEN 1518   			/* the maximum snap length, should be 256K instead of 64K nowadays */
 
 /* Global header (http://v2.nat32.com/pcap.htm) */
 struct global_hdr_s {
@@ -97,7 +99,7 @@ int check_header(char *buffer, unsigned int size, unsigned int prior_ts, struct 
  *          -3   error (EOF reached while reading input file)
  *
  */
-int fix_pcap(FILE *pcap, FILE *pcap_fix);
+int fix_pcap(cfile_t *pcap, afile_t *pcap_fix);
 
 /*
  * Function:  fix_pcap_packets
@@ -119,6 +121,6 @@ int fix_pcap(FILE *pcap, FILE *pcap_fix);
  *          -3   error (EOF reached while reading input file)
  *
  */
-int fix_pcap_packets(FILE *pcap, FILE *pcap_fix, uint64_t filesize, struct global_hdr_s global_hdr, unsigned short hdr_integ, char *writebuffer, uint64_t writepos);
+int fix_pcap_packets(cfile_t *pcap, afile_t *pcap_fix, struct global_hdr_s global_hdr, unsigned short hdr_integ, char *writebuffer, uint64_t writepos);
 
 #endif

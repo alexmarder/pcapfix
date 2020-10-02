@@ -89,7 +89,7 @@ int check_header_kuznetzov(char *buffer, unsigned int size, unsigned int prior_t
  *          -3   error (EOF reached while reading input file)
  *
  */
-int fix_pcap_kuznetzov(FILE *pcap, FILE *pcap_fix);
+int fix_pcap_kuznetzov(cfile_t *pcap, afile_t *pcap_fix);
 
 /*
  * Function:  fix_pcap_packets
@@ -111,6 +111,6 @@ int fix_pcap_kuznetzov(FILE *pcap, FILE *pcap_fix);
  *          -3   error (EOF reached while reading input file)
  *
  */
-int fix_pcap_packets_kuznetzov(FILE *pcap, FILE *pcap_fix, uint64_t filesize, struct global_hdr_s global_hdr, unsigned short hdr_integ, char *writebuffer, uint64_t writepos);
+int fix_pcap_packets_kuznetzov(cfile_t *pcap, afile_t *pcap_fix, struct global_hdr_s global_hdr, unsigned short hdr_integ, char *writebuffer, uint64_t writepos);
 
 #endif
